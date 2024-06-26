@@ -7,6 +7,11 @@ via_ir = true
 [rpc_endpoints]
 NOLLIE_RPC = "https://nollie-rpc.skatechain.org"
 AMOY_RPC = "https://rpc-amoy.polygon.technology"
+BASE_RPC = "https://base-sepolia-rpc.publicnode.com"
+ARB_RPC = "https://endpoints.omniatech.io/v1/arbitrum/sepolia/public"
+BSC_RPC = "https://data-seed-prebsc-2-s3.bnbchain.org:8545"
+OP_RPC = "https://optimism-goerli.public.blastapi.io"
+
 
 [fmt]
 line_length = 80
