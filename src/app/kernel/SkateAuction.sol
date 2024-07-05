@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
-import { SkateApp } from '../../skate/kernel/SkateApp.sol';
-import { SkateNFT } from '../../app/kernel/SkateNFT.sol';
-import { IMessageBox } from '../../skate/kernel/interfaces/IMessageBox.sol';
-import { ISkateAuction } from './interfaces/ISkateAuction.sol';
-import { Arrays } from '@openzeppelin/contracts/utils/Arrays.sol';
+import {SkateApp} from "../../skate/kernel/SkateApp.sol";
+import {SkateNFT} from "../../app/kernel/SkateNFT.sol";
+import {IMessageBox} from "../../skate/kernel/interfaces/IMessageBox.sol";
+import {ISkateAuction} from "./interfaces/ISkateAuction.sol";
 
 contract SkateAuction is SkateNFT, ISkateAuction {
     Status _auctionStatus;
@@ -27,68 +26,84 @@ contract SkateAuction is SkateNFT, ISkateAuction {
         address user,
         uint256 amount,
         uint256 chainId
-    )
-        external
-        onlyWhileAuctionOpen
-        returns (IMessageBox.Task[] memory tasks)
-    {
+    ) external onlyWhileAuctionOpen returns (IMessageBox.Task[] memory tasks) {
         require(user != address(0), AddressZero());
         require(amount > 0, NonZeroBidRequired());
-        _bids.push(Bid({ bidder: user, amount: amount, chainId: chainId }));
+        _bids.push(Bid({bidder: user, amount: amount, chainId: chainId}));
+        emit BidPlaced(user, amount, chainId);
     }
 
-    function stopAuction(address owner)
-        external
-        onlyContract
-        returns (IMessageBox.Task[] memory tasks)
-    {
-        require(_auctionStatus == Status.Started, 'Auction not ended yet');
+    function stopAuction(
+        address owner
+    ) external onlyContract returns (IMessageBox.Task[] memory tasks) {
+        require(_auctionStatus == Status.Started, "Auction not started yet");
 
-        // sort bids in descending order of amount
         Bid[] memory arr = _bids;
         arr = _quickSort(arr, int256(0), int256(arr.length - 1));
         _bids = arr;
-
-        // Only take top 3 bids
         uint256 numWinners = _bids.length < 3 ? _bids.length : 3;
         tasks = new IMessageBox.Task[](numWinners);
 
         for (uint256 i = 0; i < numWinners; i++) {
-            tasks[i] = _mint(owner, arr[i].bidder, _tokenId, arr[i].chainId)[0];
+            tasks[i] = _processBid(
+                owner,
+                arr[i].bidder,
+                arr[i].amount,
+                ++_tokenId,
+                arr[i].chainId
+            )[0];
         }
 
         emit AuctionEnded(block.timestamp);
     }
+    /**
+     * @notice _processBid is an internal function that is used to process the bid
+     * by minting and creating task required
+     * @param owner is the executor address
+     * @param to is the user the nft is minted to
+     * @param amount is the bid amount by user
+     * @param tokenId is the nft id 
+     * @param chainId is the chainId that the bid intent is destined for
+     * requirements:
+     * - only contract can call this function
+     */
 
-    // function _quickSort(uint[] memory arr, int left, int right) internal{
-    //     int i = left;
-    //     int j = right;
-    //     if(i==j) return;
-    //     uint pivot = arr[uint(left + (right - left) / 2)];
-    //     while (i <= j) {
-    //         while (arr[uint(i)] < pivot) i++;
-    //         while (pivot < arr[uint(j)]) j--;
-    //         if (i <= j) {
-    //             (arr[uint(i)], arr[uint(j)]) = (arr[uint(j)], arr[uint(i)]);
-    //             i++;
-    //             j--;
-    //         }
-    //     }
-    //     if (left < j)
-    //         quickSort(arr, left, j);
-    //     if (i < right)
-    //         quickSort(arr, i, right);
-    // }
+    function _processBid(
+        address owner,
+        address to,
+        uint256 amount,
+        uint256 tokenId,
+        uint256 chainId
+    ) internal returns (IMessageBox.Task[] memory tasks) {
+        _mint(owner, to, tokenId, chainId);
+        address peripheryContract = chainIdToPeripheryContract(chainId);
+        tasks = new IMessageBox.Task[](1);
+        tasks[0] = IMessageBox.Task(
+            peripheryContract, // app address,
+            abi.encodeWithSignature(
+                "processBid(address,uint256,uint256)",
+                to,
+                tokenId,
+                amount
+            ),
+            owner,
+            chainId
+        );
+    }
+    /**
+     * @notice _quicksort is an internal function that is used to perform sort on an array of bids
+     * @param arr is the address of the user submitting the bid
+     * @param left is the left index
+     * @param right is the right index
+     * requirements:
+     * - only contract can call this function
+     */
 
     function _quickSort(
         Bid[] memory arr,
         int256 left,
         int256 right
-    )
-        internal
-        pure
-        returns (Bid[] memory)
-    {
+    ) internal pure returns (Bid[] memory) {
         if (left < right) {
             int256 pivotIndex = _partition(arr, left, right);
             _quickSort(arr, left, pivotIndex - 1);
@@ -96,30 +111,37 @@ contract SkateAuction is SkateNFT, ISkateAuction {
         }
         return arr;
     }
+    /**
+     * @notice _partition is an internal function that is used to perform partitioning that is used for quicksort algo
+     * @param arr is the address of the user submitting the bid
+     * @param left is the left index
+     * @param right is the right index
+     * requirements:
+     * - only contract can call this function
+     */
 
     function _partition(
         Bid[] memory arr,
         int256 left,
         int256 right
-    )
-        internal
-        pure
-        returns (int256)
-    {
+    ) internal pure returns (int256) {
         uint256 pivot = arr[uint256(right)].amount;
         int256 i = left - 1;
 
         for (int256 j = left; j < right; j++) {
             if (arr[uint256(j)].amount > pivot) {
-                // Change < to > for descending order
                 i++;
-                (arr[uint256(i)], arr[uint256(j)]) =
-                    (arr[uint256(j)], arr[uint256(i)]);
+                (arr[uint256(i)], arr[uint256(j)]) = (
+                    arr[uint256(j)],
+                    arr[uint256(i)]
+                );
             }
         }
 
-        (arr[uint256(i + 1)], arr[uint256(right)]) =
-            (arr[uint256(right)], arr[uint256(i + 1)]);
+        (arr[uint256(i + 1)], arr[uint256(right)]) = (
+            arr[uint256(right)],
+            arr[uint256(i + 1)]
+        );
         return i + 1;
     }
 

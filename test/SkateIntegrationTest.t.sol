@@ -5,6 +5,7 @@ import { Test, console2 } from 'forge-std/Test.sol';
 
 import { ERC1967Proxy } from
     'openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import { IMessageBox } from '../src/skate/kernel/interfaces/IMessageBox.sol';
 import { MessageBox } from '../src/skate/kernel/MessageBox.sol';
@@ -21,10 +22,15 @@ import { SkateAuction } from '../src/app/kernel/SkateAuction.sol';
 import { ISkateGateway } from
     '../src/skate/periphery/interfaces/ISkateGateway.sol';
 import { SkateGateway } from '../src/skate/periphery/SkateGateway.sol';
+import { SkateAuctionToken } from '../src/app/periphery/SkateAuctionToken.sol';
 
 import { ISkateNFTPeriphery } from
     '../src/app/periphery/interfaces/ISkateNFTPeriphery.sol';
 import { SkateNFTPeriphery } from '../src/app/periphery/SkateNFTPeriphery.sol';
+import { ISkateAuctionPeriphery } from
+    '../src/app/periphery/interfaces/ISkateAuctionPeriphery.sol';
+import { SkateAuctionPeriphery } from
+    '../src/app/periphery/SkateAuctionPeriphery.sol';
 
 import { Utils } from './utils/Utils.sol';
 
@@ -51,11 +57,11 @@ contract SkateNFTIntegration is Test, Utils {
     // BNB: 97
     // Base: 84532
     //Polygon: 80002
-    ISkateNFTPeriphery auctionPeripheryOp;
-    ISkateNFTPeriphery auctionPeripheryBase;
-    ISkateNFTPeriphery auctionPeripheryArb;
-    ISkateNFTPeriphery auctionPeripheryPolygon;
-    ISkateNFTPeriphery auctionPeripheryBsc;
+    ISkateAuctionPeriphery auctionPeripheryOp;
+    ISkateAuctionPeriphery auctionPeripheryBase;
+    ISkateAuctionPeriphery auctionPeripheryArb;
+    ISkateAuctionPeriphery auctionPeripheryPolygon;
+    ISkateAuctionPeriphery auctionPeripheryBsc;
     ISkateGateway gatewayOp;
     ISkateGateway gatewayBase;
     ISkateGateway gatewayArb;
@@ -67,6 +73,10 @@ contract SkateNFTIntegration is Test, Utils {
     IExecutorRegistry registryArb;
     IExecutorRegistry registryPolygon;
     IExecutorRegistry registryBsc;
+    address auctionTokenOp;
+    address auctionTokenBase;
+    address auctionTokenPolygon;
+    address auctionTokenBsc;
 
     function setUp() external {
         (owner, key) = makeAddrAndKey('test_test_test');
@@ -97,16 +107,18 @@ contract SkateNFTIntegration is Test, Utils {
         registryOp = new ExecutorRegistry();
         gatewayOp = new SkateGateway();
         gatewayOp.setExecutorRegistry(address(registryOp));
-        address impl = address(new SkateNFTPeriphery());
-        auctionPeripheryOp = SkateNFTPeriphery(
+        address impl = address(new SkateAuctionPeriphery());
+        auctionTokenOp = address(new SkateAuctionToken('AuctionToken', 'AT'));
+        auctionPeripheryOp = SkateAuctionPeriphery(
             address(
                 new ERC1967Proxy(
                     impl,
                     abi.encodeWithSignature(
-                        'initialize(string,string,address)',
-                        'Skate NFT Periphery',
-                        'SNP',
-                        address(gatewayOp)
+                        '__SkateAuctionPeriphery_init(string,string,address,address)',
+                        'Skate Auction Periphery',
+                        'SAP',
+                        address(gatewayOp),
+                        auctionTokenOp
                     )
                 )
             )
@@ -116,16 +128,18 @@ contract SkateNFTIntegration is Test, Utils {
         registryBase = new ExecutorRegistry();
         gatewayBase = new SkateGateway();
         gatewayBase.setExecutorRegistry(address(registryBase));
-        impl = address(new SkateNFTPeriphery());
-        auctionPeripheryBase = SkateNFTPeriphery(
+        auctionTokenBase = address(new SkateAuctionToken('AuctionToken', 'AT'));
+        impl = address(new SkateAuctionPeriphery());
+        auctionPeripheryBase = SkateAuctionPeriphery(
             address(
                 new ERC1967Proxy(
                     impl,
                     abi.encodeWithSignature(
-                        'initialize(string,string,address)',
-                        'Skate NFT Periphery',
+                        '__SkateAuctionPeriphery_init(string,string,address,address)',
+                        'Skate Auction Periphery',
                         'SNP',
-                        address(gatewayBase)
+                        address(gatewayBase),
+                        auctionTokenBase
                     )
                 )
             )
@@ -135,16 +149,18 @@ contract SkateNFTIntegration is Test, Utils {
         registryBsc = new ExecutorRegistry();
         gatewayBsc = new SkateGateway();
         gatewayBsc.setExecutorRegistry(address(registryBsc));
-        impl = address(new SkateNFTPeriphery());
-        auctionPeripheryBsc = SkateNFTPeriphery(
+        impl = address(new SkateAuctionPeriphery());
+        auctionTokenBsc = address(new SkateAuctionToken('AuctionToken', 'AT'));
+        auctionPeripheryBsc = SkateAuctionPeriphery(
             address(
                 new ERC1967Proxy(
                     impl,
                     abi.encodeWithSignature(
-                        'initialize(string,string,address)',
-                        'Skate NFT Periphery',
+                        '__SkateAuctionPeriphery_init(string,string,address,address)',
+                        'Skate Auction Periphery',
                         'SNP',
-                        address(gatewayBsc)
+                        address(gatewayBsc),
+                        auctionTokenBsc
                     )
                 )
             )
@@ -173,16 +189,19 @@ contract SkateNFTIntegration is Test, Utils {
         registryPolygon = new ExecutorRegistry();
         gatewayPolygon = new SkateGateway();
         gatewayPolygon.setExecutorRegistry(address(registryPolygon));
-        impl = address(new SkateNFTPeriphery());
-        auctionPeripheryPolygon = SkateNFTPeriphery(
+        impl = address(new SkateAuctionPeriphery());
+        auctionTokenPolygon =
+            address(new SkateAuctionToken('AuctionToken', 'AT'));
+        auctionPeripheryPolygon = SkateAuctionPeriphery(
             address(
                 new ERC1967Proxy(
                     impl,
                     abi.encodeWithSignature(
-                        'initialize(string,string,address)',
-                        'Skate NFT Periphery',
+                        '__SkateAuctionPeriphery_init(string,string,address,address)',
+                        'Skate Auction Periphery',
                         'SNP',
-                        address(gatewayPolygon)
+                        address(gatewayPolygon),
+                        auctionTokenPolygon
                     )
                 )
             )
@@ -259,6 +278,38 @@ contract SkateNFTIntegration is Test, Utils {
         address skateAppAddress = address(auction);
 
         auction.startAuction();
+        vm.stopPrank();
+        vm.selectFork(opFork);
+        vm.startPrank(user5);
+        SkateAuctionToken(auctionTokenOp).mint(user5, 10 ** 19);
+        SkateAuctionToken(auctionTokenOp).approve(
+            address(auctionPeripheryOp), 10 ** 24
+        );
+        vm.stopPrank();
+        vm.selectFork(bscFork);
+        vm.startPrank(user4);
+        SkateAuctionToken(auctionTokenBsc).mint(user4, 10 ** 19);
+        SkateAuctionToken(auctionTokenBsc).approve(
+            address(auctionPeripheryBsc), 10 ** 24
+        );
+        vm.stopPrank();
+        vm.selectFork(polygonFork);
+        vm.startPrank(user2);
+        SkateAuctionToken(auctionTokenPolygon).mint(user2, 10 ** 19);
+        SkateAuctionToken(auctionTokenPolygon).approve(
+            address(auctionPeripheryPolygon), 10 ** 24
+        );
+        vm.stopPrank();
+        vm.selectFork(baseFork);
+        vm.startPrank(user1);
+        SkateAuctionToken(auctionTokenBase).mint(user1, 10 ** 19);
+        SkateAuctionToken(auctionTokenBase).approve(
+            address(auctionPeripheryBase), 10 ** 24
+        );
+        vm.stopPrank();
+        vm.selectFork(skateFork);
+        // vm.prank(user5);
+        // auctionTokenOp.approve(address(auctionPeripheryOp), 10**18);
         _placeBid(wallet5, user5, uint256(2 * 10 ** 18), skateAppAddress, 420);
         _placeBid(wallet4, user4, uint256(1 * 10 ** 18), skateAppAddress, 97);
         // _placeBid(

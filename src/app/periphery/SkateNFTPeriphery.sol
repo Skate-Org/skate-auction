@@ -31,7 +31,7 @@ contract SkateNFTPeriphery is
         _disableInitializers();
     }
 
-    function initialize(
+    function __SkateNFTPeriphery_init(
         string memory name_,
         string memory symbol_,
         address gateway_
@@ -45,7 +45,15 @@ contract SkateNFTPeriphery is
         _symbol = symbol_;
     }
 
-    function mint(address to, uint256 tokenId) external override onlyGateway {
+    function mint(
+        address to,
+        uint256 tokenId
+    )
+        external
+        virtual
+        override
+        onlyGateway
+    {
         _balances[to] += 1;
         _owners[tokenId] = to;
 

@@ -23,6 +23,7 @@ interface ISkateAuction is ISkateApp {
 
     event AuctionStarted(uint256 time);
     event AuctionEnded(uint256 time);
+    event BidPlaced(address bidder, uint256 amount, uint256 chainId);
 
     error BiddingNotAvailable();
     error AuctionAlreadyStarted();
@@ -59,8 +60,13 @@ interface ISkateAuction is ISkateApp {
     function stopAuction(address user)
         external
         returns (IMessageBox.Task[] memory tasks);
-    // function bids(uint256 index) external view returns (address bidder, uint256 amount);
+    
+     /**
+     * @notice auctionStatus is called to return the current auction status
+     */
     function auctionStatus() external view returns (Status);
-
+    /**
+     * @notice bids is called to return all the existing bids placed
+     */
     function bids() external view returns (Bid[] memory);
 }

@@ -325,7 +325,7 @@ contract SkateAuctionTest is Test, Utils {
             IMessageBox.Task(
                 address(0x123),
                 abi.encodeWithSignature(
-                    'mint(address,uint256)', user1, auction.tokenId()
+                    'processBid(address,uint256,uint256)', user1, 1, 5*10**18
                 ),
                 owner,
                 1
@@ -337,7 +337,7 @@ contract SkateAuctionTest is Test, Utils {
             IMessageBox.Task(
                 address(0x123),
                 abi.encodeWithSignature(
-                    'mint(address,uint256)', user2, auction.tokenId()
+                    'processBid(address,uint256,uint256)', user2, 2, 4*10**18
                 ),
                 owner,
                 1
@@ -349,7 +349,7 @@ contract SkateAuctionTest is Test, Utils {
             IMessageBox.Task(
                 address(0x123),
                 abi.encodeWithSignature(
-                    'mint(address,uint256)', user3, auction.tokenId()
+                    'processBid(address,uint256,uint256)', user3, 3, 3*10**18
                 ),
                 owner,
                 1
